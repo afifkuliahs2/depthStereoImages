@@ -10,8 +10,8 @@ class DualCam:
 
     def colorDefinition(self):
         buffersize = 64
-        self.greenLower = (29,86,6)
-        self.greenUpper = (64,255,255)
+        self.greenLower = (29, 86, 6)
+        self.greenUpper = (64, 255, 255)
         self.pts = deque(maxlen=buffersize)
 
         self.focalLength = 50
@@ -31,21 +31,52 @@ class DualCam:
 
         return center
 
-    def getDepth(self, c1, c2, init1, init2, frame):
+    def getDepth(self, c1, c2, init1, init2):
+        # p1 and p2 are points on camera 1, p1 is point on center projection, p2 is point on projection plane
+        # p3 adn p4 are points on camera 1, p3 is point on center projection, p4 is point on projection plane
+        # z = focal length / depth
         center1 = 0
         center2 = 0
-        l = np.size(frame[0])
-
+        d_width = self.cam1.get(3) / 2
+        p1 = {'z1': 0, 'x1': 0}
+        p2 = {'z2': 0, 'x2': 0}
+        p3 = {'z3': 0, 'x3': 0}
+        p4 = {'z4': 0, 'x4': 0}
+        A1 = 0
+        B1 = 0
+        C1 = 0
+        A2 = 0
+        B2 = 0
+        C2 = 0
+        z = 0
+        x = 0
+        divider = 0
 
         if len(c1) > 0 and len(c2) > 0:
             init1 = self.getCenter(c1)
             init2 = self.getCenter(c2)
-            center1 = init1[1]
-            center2 = init2[1]
+            center1 = init1[0]
+            center2 = init2[0]
 
-        d = center1 + center2
+        p1['x1'] = d_width  # z1 still 0
+        p2['x2'] = center1
+        p2['z2'] = self.focalLength
+        p3['x3'] = d_width + self.distance  # z3 still 0
+        p4['z4'] = center2 + self.distance
+        p4['x4'] = self.focalLength
 
-        return d
+        A1 = p2['x2'] - p1['x1']
+        B1 = p1['z1'] - p2['z2']
+        C1 = A1 * p1['z1'] + B1 * p1['x1']
+        A2 = p4['x4'] - p3['x3']
+        B2 = p3['z3'] - p4['z4']
+        C2 = A2 * p3['z3'] - B2 * p3['x3']
+        divider = A1 * B2 - A2 * B1  # Value of C1 and C2 is same !
+        #
+        z = ((B2 * C1) - (B1 * C2)) / divider  # return z
+        x = ((A1 * C2) - (A2 * C1)) / divider  # return x
+
+        return z
 
     def makeConture(self, contours, center, frame):
         if len(contours) > 0:
@@ -64,7 +95,7 @@ class DualCam:
                 cv2.circle(frame, (int(x), int(y)), int(radius),
                            (0, 255, 255), 2)
                 cv2.circle(frame, center, 5, (0, 0, 255), -1) #draw centroid
-                cv2.putText(frame, str(center[1]), (10, 500), font, 4, (255, 255, 255), 2, cv2.LINE_AA)
+                cv2.putText(frame, str(center), (int(x), int(y)), font, 2, (255, 255, 255), 2, cv2.LINE_AA)
 
         self.pts.appendleft(center)
         return
@@ -95,7 +126,7 @@ class DualCam:
         init1 = None
         init2 = None
 
-        z = self.getDepth(cnts, cnts2, init1, init2, img1)
+        z = self.getDepth(cnts, cnts2, init1, init2)
         print(str(z))
 
         cv2.imshow('Camera 1', img1)
