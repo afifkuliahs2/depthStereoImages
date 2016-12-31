@@ -10,7 +10,7 @@ class DualCam:
 
     def colorDefinition(self):
         buffersize = 64
-        self.greenLower = (29, 86, 6)
+        self.greenLower = (29, 86, 6)g
         self.greenUpper = (64, 255, 255)
         self.pts = deque(maxlen=buffersize)
 
@@ -42,15 +42,6 @@ class DualCam:
         p2 = {'z2': 0, 'x2': 0}
         p3 = {'z3': 0, 'x3': 0}
         p4 = {'z4': 0, 'x4': 0}
-        A1 = 0
-        B1 = 0
-        C1 = 0
-        A2 = 0
-        B2 = 0
-        C2 = 0
-        z = 0
-        x = 0
-        divider = 0
 
         if len(c1) > 0 and len(c2) > 0:
             init1 = self.getCenter(c1)
@@ -72,13 +63,13 @@ class DualCam:
         B2 = p3['z3'] - p4['z4']
         C2 = A2 * p3['z3'] - B2 * p3['x3']
         divider = A1 * B2 - A2 * B1  # Value of C1 and C2 is same !
-        #
+
         z = ((B2 * C1) - (B1 * C2)) / divider  # return z
-        x = ((A1 * C2) - (A2 * C1)) / divider  # return x
+        # x = ((A1 * C2) - (A2 * C1)) / divider  # return x
 
         return z
 
-    def makeConture(self, contours, center, frame):
+    def makeConture(self, contours, center, depth, frame):
         if len(contours) > 0:
             # find the largest contour in the mask, then use
             # it to compute the minimum enclosing circle and
@@ -95,7 +86,7 @@ class DualCam:
                 cv2.circle(frame, (int(x), int(y)), int(radius),
                            (0, 255, 255), 2)
                 cv2.circle(frame, center, 5, (0, 0, 255), -1) #draw centroid
-                cv2.putText(frame, str(center), (int(x), int(y)), font, 2, (255, 255, 255), 2, cv2.LINE_AA)
+                cv2.putText(frame, str(depth), (int(x), int(y)), font, 2, (255, 255, 255), 2, cv2.LINE_AA)
 
         self.pts.appendleft(center)
         return
@@ -104,11 +95,9 @@ class DualCam:
         ret, frame = self.cam1.read()
         ret2, frame2 = self.cam2.read();
 
-        img1 = cv2.flip(frame,1)
-        img2 = cv2.flip(frame2,2)
+        img1 = cv2.flip(frame, 1)
+        img2 = cv2.flip(frame2, 2)
 
-
-        # bisa jadi method
         hsvColor = cv2.cvtColor(img1, cv2.COLOR_BGR2HSV)
         hsvColor2 = cv2.cvtColor(img2, cv2.COLOR_BGR2HSV)
 
@@ -120,14 +109,14 @@ class DualCam:
         center = None
         center2 = None
 
-        self.makeConture(cnts, center, img1)
-        self.makeConture(cnts2, center2, img2)
-
         init1 = None
         init2 = None
-
         z = self.getDepth(cnts, cnts2, init1, init2)
-        print(str(z))
+        # print(z)
+
+        self.makeConture(cnts, center, z, img1)
+        self.makeConture(cnts2, center2, z, img2)
+
 
         cv2.imshow('Camera 1', img1)
         cv2.imshow('Camera 2', img2)
