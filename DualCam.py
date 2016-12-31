@@ -10,7 +10,7 @@ class DualCam:
 
     def colorDefinition(self):
         buffersize = 64
-        self.greenLower = (29, 86, 6)g
+        self.greenLower = (29, 86, 6)
         self.greenUpper = (64, 255, 255)
         self.pts = deque(maxlen=buffersize)
 
